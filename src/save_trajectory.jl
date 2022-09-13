@@ -22,12 +22,12 @@ function main(urdf_filepath::String="jaco_urdf.urdf")
     # White Calculator - Calculator 1
     # means_path ="human_traj_data/means_201.csv";
     # means_path ="human_traj_data/means_201_62.csv";
-    means_path ="human_traj_data/means_201_52.csv";
+    # means_path ="human_traj_data/means_201_52.csv";
 
     # (A, C, 1)
-    joint_start = joint_A;
-    joint_target = joint_C;
-    file_ending = "1_A_C_52_dist"
+    # joint_start = joint_A;
+    # joint_target = joint_C;
+    # file_ending = "1_A_C_52_dist"
 
 
     # (A, B, 1)

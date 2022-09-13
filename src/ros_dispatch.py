@@ -1,8 +1,16 @@
+from cgitb import reset
+from curses import raw
+import imp
 import actionlib
 import rospy
 import sys
+import os
+import time
+import kinova_msgs
+from kinova_msgs.srv import Stop
 
-from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
+
+from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal, FollowJointTrajectoryResult
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
 
@@ -12,6 +20,9 @@ joint_names = None
 def follow_trajectory(points, dt, t_0):
     global client
     global joint_names
+    rospy.wait_for_service('/j2s7s300_driver/in/stop')
+    stop_traj = rospy.ServiceProxy('/j2s7s300_driver/in/stop', Stop)
+
     trajectory = JointTrajectory()
     trajectory.joint_names = joint_names
     for t, point in enumerate(points):
@@ -24,8 +35,29 @@ def follow_trajectory(points, dt, t_0):
     follow_goal.trajectory = trajectory
     print("sent, waiting...")
     client.send_goal(follow_goal)
+
+    raw_input("E-Stop or Done Calculating?")
+    end = time.time()
+    stop_traj()
+
+    # "/j2s7s300/in/stop"
+    # os.system('rosservice call /j2s7s300_driver/in/stop')
+
+    #-------------------------------------------------------
     client.wait_for_result()
+    result = client.get_result()
+    if result != FollowJointTrajectoryResult.SUCCESSFUL:
+        client.cancel_all_goals()
+
+    # if result != 
+    raw_input("Start again? or continue")
+    # "/j2s7s300/in/start"
+    os.system('rosservice call /j2s7s300_driver/in/start')
+    #-------------------------------------------------------
+    # client.send_goal(follow_goal)
+    
     print("Done...")
+    return end
 
 def parse_traj_line(line):
     tmp = line.split(", ")
@@ -45,7 +77,6 @@ def parse_traj_file(fname):
 def start_ros_node():
     global client
     global joint_names
-    rospy.init_node("comoto_dispatch")
     joint_names = ["j2s7s300_joint_1", "j2s7s300_joint_2", "j2s7s300_joint_3", "j2s7s300_joint_4", 
         "j2s7s300_joint_5", "j2s7s300_joint_6", "j2s7s300_joint_7"]
     client = actionlib.SimpleActionClient("/jaco_trajectory_controller/follow_joint_trajectory", FollowJointTrajectoryAction)

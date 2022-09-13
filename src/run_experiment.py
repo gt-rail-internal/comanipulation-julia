@@ -1,108 +1,293 @@
+
+
+
+
+
 from ros_dispatch import parse_traj_file, follow_trajectory, start_ros_node, end_ros_node 
 import random
-import tkinter as tk
+import Tkinter as tk
 import datetime
 import rospy
 import tf
 import numpy as np
 from visualization_msgs.msg import MarkerArray, Marker
 import json
+from pygame import mixer
+import time
+import sys
+import os
+
+mixer.init()
+
+def play_music():
+    time.sleep(3)
+    mixer.music.load("beep.mp3")
+    mixer.music.play()
+
+def get_problem():
+    operators = [' + ', ' - ']
+    first_num = random.randint(100000, 999999)
+    second_num = random.randint(100000, 999999)
+    return str(first_num) + random.choice(operators) + str(second_num)
+
+def run_experiment(user_id, path):
+    map_type_to_traj = {
+        "WHITE_1_A_D_62":"traj_1_A_D_62.txt",
+        "PINK_2_A_B":"traj_2_A_B.txt",
+        "PINK_2_D_E":"traj_2_D_E.txt",
+        "PINK_2_E_B":"traj_2_E_B.txt",
+        "PINK_2_E_C":"traj_2_E_C.txt",
+        "BLACK_3_A_C":"traj_3_A_C_52.txt",
+        "BLACK_3_C_B":"traj_3_C_B.txt",
+        "BLACK_3_D_B":"traj_3_D_B.txt",
+    }
+
+    start_traj = ["PINK_2_E_C", "WHITE_1_A_D_62"] # [, 
+    end_traj = ["BLACK_3_A_C","PINK_2_D_E"] # , 
+    middle_traj = ["BLACK_3_D_B", "BLACK_3_C_B", "PINK_2_A_B", "PINK_2_E_B"] # 
+
+    methods =  ["COMOTO", "NOMINAL", "DIST"]
+
+    log_data = []
+
+    random.shuffle(methods)
+    random.shuffle(start_traj)
+    random.shuffle(end_traj)
+    random.shuffle(middle_traj)
+
+    start_ros_node()
+
+    window = tk.Tk()
+    width= window.winfo_screenwidth() 
+    height= window.winfo_screenheight()
+    window.geometry("%dx%d" % (width, height))
+    window.configure(bg='#8f918e')
+    frame = tk.Frame(window, bg="#8f918e", width = width, height = height)
+    my_string_var = tk.StringVar() 
+    my_string_var.set("Please listen to the instructions before starting the experiment")
+    text_label = tk.Label(frame, bg="#8f918e", fg = "black", textvariable=my_string_var, font=("Arial", 40))
+    second_string_var = tk.StringVar()
+    second_string_var.set("")
+    calculate_label = tk.Label(frame, bg="#8f918e", fg = "black", textvariable=second_string_var, font=("Arial", 40))
+    frame.pack()
+    text_label.place(x = 300, y = 500)
+    calculate_label.place(x = 600, y = 600)
+
+    counter = 0
+
+    types = [start_traj[0], end_traj[0], middle_traj[0], middle_traj[1]]
+
+    log_data.append("Part 1")
+
+    for method in methods:
+
+        print(method)
+
+        random.shuffle(types)
+
+        for i in range(len(types)):
+            traj_file_name = map_type_to_traj[types[i]]
+
+            if method == "NOMINAL":
+                traj_file_name = traj_file_name[:5] + "nominal_" + traj_file_name[5:]
+
+            if method == "DIST":
+                traj_file_name = traj_file_name[:len(traj_file_name) - 4] + "_dist.txt"
+
+            log_data.append(traj_file_name)
+
+            type_name = types[i]
+
+            traj, dt, t_0 = parse_traj_file(traj_file_name)
+
+            raw_input("Display Start Instructions?")
+
+            my_string_var.set("Be careful as the arm moves to the start position")
+            second_string_var.set("")
+            
+            frame.configure(bg='#8f918e')
+            text_label.configure(bg = "#8f918e", fg = "black")
+            calculate_label.configure(bg = "#8f918e", fg = "black")
 
 
-marker_array = []
-campos = [-0.019, 0.420, 1.112]
-transform = tf.transformations.euler_matrix(-2.161, 0.046, -3.110)[:3, :3]
+            raw_input("Go to start?")
 
-def callback(data):
-    joints = [2, 3, 5, 6, 7, 8, 12, 13, 14, 15, 26]
-    markers = data.markers
-    curr_frame = []
-    for index in joints:
-        old_coords = np.array([markers[index].pose.position.x, markers[index].pose.position.y, markers[index].pose.position.z])
-        new_coords = np.matmul(transform, old_coords.T)
-        curr_frame.append(new_coords[0] + campos[0])#1.4)#
-        curr_frame.append(new_coords[1] + campos[1])#0.5)#
-        curr_frame.append(new_coords[2] + campos[2])#-0.5)#
-    marker_array.append(curr_frame)
+            follow_trajectory([traj[0]], 4.0,  4.0)
 
-map_type_to_traj = {
-    "WHITE_COMOTO": "traj_white.txt",
-    "WHITE_NOMINAL": "traj_nominal_white.txt",
-    "GREEN_COMOTO": "traj_green.txt",
-    "GREEN_NOMINAL": "traj_nominal_green.txt",
-    "PINK_COMOTO": "traj_pink.txt",
-    "PINK_NOMINAL": "traj_nominal_pink.txt",
-    "BLACK_COMOTO": "traj_black.txt",
-    "BLACK_NOMINAL": "traj_nominal_black.txt",
+            raw_input("Display move instructions?")
 
-}
+            if type_name.startswith("WHITE"):
+                frame.configure(bg='white')
+                my_string_var.set("Reach for the WHITE calculator (Number 1) after the beep")
+                text_label.configure(bg = "white")
+                calculate_label.configure(bg = "white")
+            
 
-types = list(map_type_to_traj.keys())
+            if type_name.startswith("PINK"):
+                frame.configure(bg='#e75480')
+                my_string_var.set("Reach for the PINK calculator (Number 2) after the beep")
+                text_label.configure(bg = "#e75480", fg = "white")
+                calculate_label.configure(bg = "#e75480", fg = "white")
+            
+            if type_name.startswith("BLACK"):
+                frame.configure(bg='black')
+                my_string_var.set("Reach for the BLACK calculator (Number 3) after the beep")
+                text_label.configure(bg = "black", fg = "white")
+                calculate_label.configure(bg = "black", fg = "white")
+            
+        
+            calculator_problem = get_problem()
+            log_data.append(calculator_problem)
+            second_string_var.set("Calculate: " + calculator_problem)
 
-print(types)
+            raw_input("Start countdown?")
 
-random.shuffle(types)
+            play_music()
 
-start_ros_node()
+            time.sleep(0.5)
 
-# window = tk.Tk()
+            begin = time.time()
 
-# label = tk.Label(text="Click the button to run the experiment")
+            follow_trajectory(traj, dt, 1.0)
 
-# next_button = tk.Button(text="Start Experiment")
+            raw_input("Calculated Problem?")
 
-# close_button = tk.Button(text="End Experiment")
+            end = time.time()
 
-# label.pack()
+            log_data.append(str(end - begin))
 
-# next_button.pack()
+            print(end - begin)
 
-# close_button.pack()
+            answer = ""
 
-rospy.Subscriber("/front/body_tracking_data", MarkerArray, callback)
-rate = rospy.Rate(30)
+            while len(answer) == 0:
+                answer = raw_input("Answer: ")
+                answer.strip()
 
-for i in range(len(types)):
-    traj_file_name = map_type_to_traj[types[i]]
-
-    type_name = types[i]
-
-    traj, dt, t_0 = parse_traj_file(traj_file_name)
-
-    print(traj_file_name)
-
-    if type_name.startswith("WHITE"):
-        print("Reach for White Calculator")
+            log_data.append(answer)
+        
+        my_string_var.set("Please step back from the table and fill out the survey")
+        second_string_var.set("")
+        
+        frame.configure(bg='#8f918e')
+        text_label.configure(bg = "#8f918e", fg = "black")
+        calculate_label.configure(bg = "#8f918e", fg = "black")
     
-    if type_name.startswith("GREEN"):
-        print("Reach for Green Calculator")
-    
 
-    if type_name.startswith("PINK"):
-        print("Reach for Pink Calculator")
-    
-    if type_name.startswith("BLACK"):
-        print("Reach for Black Calculator")
+    next_types = [start_traj[1], end_traj[1], middle_traj[2], middle_traj[3]]
 
-    raw_input("Go to start?")
-    old_time = datetime.datetime.now()
-    print(old_time)
+    random.shuffle(next_types)
 
-    follow_trajectory([traj[0]], 4.0,  4.0)
+    print("First part done")
 
-    raw_input("Execute?")
-    marker_array = []
-    follow_trajectory(traj, dt, 1.0)
-    new_time = datetime.datetime.now()
-    print(new_time)
-    print(old_time-new_time)
+    log_data.append("Part 2")
 
-    with open("human_marker_"+type_name+"_.txt", "w") as txt_file:
-        for line in marker_array:
-            for point in line:
-                txt_file.write(str(point) + ",") # works with any number of elements in a line
-            txt_file.write("\n")
-    marker_array = []
+    for type_name in next_types:
+
+        random.shuffle(methods)
+
+        for method in methods:
+            traj_file_name = map_type_to_traj[type_name]
+
+            if method == "NOMINAL":
+                traj_file_name = traj_file_name[:5] + "nominal_" + traj_file_name[5:]
+            
+            if method == "DIST":
+                traj_file_name = traj_file_name[:len(traj_file_name) - 4] + "_dist.txt"
+
+            log_data.append(traj_file_name)
+
+            traj, dt, t_0 = parse_traj_file(traj_file_name)
+
+            print(method)
+
+            raw_input("Display Start Instructions?")
+
+            my_string_var.set("Be careful as the arm moves to the start position")
+            second_string_var.set("")
+            
+            frame.configure(bg='#8f918e')
+            text_label.configure(bg = "#8f918e", fg = "black")
+            calculate_label.configure(bg = "#8f918e", fg = "black")
 
 
-end_ros_node()
+            raw_input("Go to start?")
+
+            follow_trajectory([traj[0]], 4.0,  4.0)
+
+            raw_input("Display move instructions?")
+
+            if type_name.startswith("WHITE"):
+                frame.configure(bg='white')
+                my_string_var.set("Reach for the WHITE calculator (Number 1) after the beep")
+                text_label.configure(bg = "white")
+                calculate_label.configure(bg = "white")
+            
+
+            if type_name.startswith("PINK"):
+                frame.configure(bg='#e75480')
+                my_string_var.set("Reach for the PINK calculator (Number 2) after the beep")
+                text_label.configure(bg = "#e75480", fg = "white")
+                calculate_label.configure(bg = "#e75480", fg = "white")
+            
+            if type_name.startswith("BLACK"):
+                frame.configure(bg='black')
+                my_string_var.set("Reach for the BLACK calculator (Number 3) after the beep")
+                text_label.configure(bg = "black", fg = "white")
+                calculate_label.configure(bg = "black", fg = "white")
+            
+            calculator_problem = get_problem()
+
+            log_data.append(calculator_problem)
+            second_string_var.set("Calculate: " + calculator_problem)
+            
+            raw_input("Start countdown?")
+
+            play_music()
+
+            time.sleep(0.5)
+
+            begin = time.time()
+
+            follow_trajectory(traj, dt, 1.0)
+
+            raw_input("Calculated Problem?")
+
+            end = time.time()
+
+            log_data.append(str(end - begin))
+
+            answer = ""
+
+            while len(answer) == 0:
+                answer = raw_input("Answer: ")
+                answer.strip()
+
+            log_data.append(answer)
+        
+        my_string_var.set("Please step back from the table and fill out the survey")
+        second_string_var.set("")
+        
+        frame.configure(bg='#8f918e')
+        text_label.configure(bg = "#8f918e", fg = "black")
+        calculate_label.configure(bg = "#8f918e", fg = "black")
+
+    raw_input("End experiment?")
+    textfile = open(path+"/experiment_run.txt", "w")
+    for element in log_data:
+        textfile.write(element + "\n")
+    textfile.close()
+    end_ros_node()
+
+def main(user_id):
+    rospy.init_node("topic2data", anonymous=True) #added from topic2data.py
+
+    logdir_path = '/home/hritiksapra/Documents/comoto.jl/src/expt_logs/user_{}'.format(user_id)
+    if not os.path.exists(logdir_path):
+        os.mkdir(logdir_path)
+        print('Created directory for User {}'.format(user_id))
+
+    run_experiment(user_id, logdir_path)
+
+if __name__ == '__main__':
+    main(sys.argv[1])

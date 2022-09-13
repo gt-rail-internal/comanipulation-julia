@@ -2,3 +2,5 @@
 .vscode
 src/Human Goal Location
 src/*.txt
+*.csv
+*.avi

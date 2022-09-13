@@ -397,7 +397,8 @@ function confirm_display_traj(traj::AbstractArray, robot_name::String, total_tim
     @sync begin
         human_dt = total_time/(200);
         if human_trajfile != ""
-            @async dispatch_human_trajectory(human_trajfile, human_dt);
+            @async dispatch_human_trajectory(human_trajfile, 0.1); #human_dt 0.1
+            # @async dispatch_human_trajectory(human_trajfile, human_dt); #human_dt 0.1
         end
         robot_dt = total_time/(length(traj)-1);
         @async dispatch_trajectory(hcat(traj...), robot_dt, 0., robot_name);

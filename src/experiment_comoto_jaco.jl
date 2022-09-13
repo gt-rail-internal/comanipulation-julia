@@ -1,6 +1,7 @@
 include("comoto_jaco.jl")
 
-const OBJECT_SET = SArray{Tuple{3,2}}(reshape([-0.07, -0.41, 0, -0.34, -0.70, 0], (3,2)));
+# const OBJECT_SET = SArray{Tuple{3,2}}(reshape([-0.07, -0.41, 0, -0.34, -0.70, 0], (3,2)));
+const OBJECT_SET = SArray{Tuple{3,4}}(reshape([0.4630687037206799, -1.2564660934035334, -1.1350046951468844, 1.074318939861337, -1.3776048405499663, -0.9614902622058676, 0.7307209236262906, 0.10381595065763977, -1.306419034351224, -0.7907382788877257, -1.6198148094114067, -0.9253187485389262], (3,4)));
 const OBJECT_POS = OBJECT_SET[:,1];
 
 function main(urdf_filepath::String="jaco_urdf.urdf")
@@ -26,57 +27,59 @@ function main(urdf_filepath::String="jaco_urdf.urdf")
     # (A, D, 1)
     # joint_start = joint_A;
     # joint_target = joint_D;
-    # file_ending = "1_A_D_62"
+    # file_ending = "1_A_D_62_dist"
 
     # Pink Calculator - Calculator 2
-    # means_path ="human_traj_data/means_101.csv";
     # means_path ="human_traj_data/means_101_52.csv";
 
     # (D, E, 2)
     # joint_start = joint_D;
     # joint_target = joint_E;
-    # file_ending = "2_D_E"
+    # file_ending = "2_D_E_dist"
 
     # (E, C, 2)
+    # check if looks ok
     # joint_start = joint_E;
     # joint_target = joint_C;
-    # file_ending = "2_E_C"
+    # file_ending = "2_E_C_leg"
 
 
     # (A, B, 2)
     # joint_start = joint_A;
     # joint_target = joint_B;
-    # file_ending = "2_A_B"
+    # file_ending = "2_A_B_dist"
     
     # (E, B, 2)
     # joint_start = joint_E;
     # joint_target = joint_B;
-    # file_ending = "2_E_B"
+    # file_ending = "2_E_B_dist"
 
 
     # Black Calculator - Calculator 3
     # means_path ="human_traj_data/means_203.csv";
     # means_path ="human_traj_data/means_203_62.csv";
-    # means_path ="human_traj_data/means_203_52.csv";
+    means_path ="human_traj_data/means_203_52.csv";
 
 
     # (A, C, 3)
-    # joint_start = joint_A;
-    # joint_target = joint_C;
-    # file_ending = "3_A_C_52" 
+    joint_start = joint_A;
+    joint_target = joint_C;
+    file_ending = "3_A_C_52_dist"                    #fix 
     # 52 is amazing for this
 
 
     # (D, B, 3)
+    # check
     # joint_start = joint_D;
     # joint_target = joint_B;
-    # file_ending = "3_D_B_52"
+    # file_ending = "3_D_B_dist"
 
 
      # (C, B, 3)
+    #  check
     # joint_start = joint_C;
     # joint_target = joint_B;
-    # file_ending = "3_C_B_52"
+    # file_ending = "3_C_B_dist"
 
     # Green Calculator - Calculator 4
     # means_path ="human_traj_data/means_204.csv";
@@ -109,7 +112,8 @@ function main(urdf_filepath::String="jaco_urdf.urdf")
     end_effector_fn = get_jaco_ee_function("jaco_urdf.urdf")
 
     
-    weights = @SVector [0, 0, 15., 0, 0.1]; #@SVector [1., 1, 15., 0.1, 0.1];
+    weights = @SVector [0, 0, 15., 0, 0.1]; #[1.5, 2.5, 25., 0.8, 0.1]
+    # @SVector [0, 0, 15., 0, 0.1]; # @SVector [1., 1, 15., 0.1, 0.1]; #
     prob = get_comoto_problem(model, prob_info, weights)
 
     println("Beginning to attempt real solution");
@@ -125,17 +129,17 @@ function main(urdf_filepath::String="jaco_urdf.urdf")
     )
 
     solver = ALTROSolver(prob, opts);
-    nominal_trajectory = [SVector{7}(prob_info.nominal_traj[:,t]) for t=1:n_timesteps]
-    nominal_file = string("traj_nominal_", file_ending, ".txt");
-    touch(nominal_file)
-    open(nominal_file, "w") do file
-        for angular in nominal_trajectory
-            write(file, string(angular)[2:end-1])
-            write(file, "\n")
-        end
-        write(file, "0.25, 0.0")
-    end
-    println("Done Printing Nominal")
+    # nominal_trajectory = [SVector{7}(prob_info.nominal_traj[:,t]) for t=1:n_timesteps]
+    # nominal_file = string("traj_nominal_", file_ending, ".txt");
+    # touch(nominal_file)
+    # open(nominal_file, "w") do file
+    #     for angular in nominal_trajectory
+    #         write(file, string(angular)[2:end-1])
+    #         write(file, "\n")
+    #     end
+    #     write(file, "0.25, 0.0")
+    # end
+    # println("Done Printing Nominal")
     solve!(solver)
     println("Cost: ", cost(solver))
     # println("States: ", TO.states(solver))
@@ -152,7 +156,7 @@ function main(urdf_filepath::String="jaco_urdf.urdf")
     nominal_cost_fns = get_nominal_costs(prob_info)
     jointvel_cost_fns = get_jointvel_costs(prob_info)
 
-    println("HOLAAA")
+    # println("HOLAAA")
     touch("distance.txt")
     open("distance.txt", "w") do file
         for i =1:length(trajectory)
